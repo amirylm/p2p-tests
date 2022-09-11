@@ -14,16 +14,12 @@ Testground plans for p2p testing
 
 ```shell
 vagrant up
+vagrant ssh
 ```
 
-Connect and check that testground is available:
+Within the VM, check that testground is configured and start the daemon:
 
 ```shell
-vagrant ssh
-
-$ testground help
+testground version
+testground daemon
 ```
-
-Next, start testground daemon with `testground daemon`
-
-...
