@@ -44,11 +44,11 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	}
 	name := fmt.Sprintf("testnode-%d", initCtx.GlobalSeq)
 	node, err := network.NewNode(ctx, &network.NodeConfig{
-		Name:        name,
-		ListenAddrs: []string{fmt.Sprintf("/ip4/%s/tcp/0", ip)},
-		MaxPeers:    maxPeers,
-		MsgHandler:  msgHandler,
-		ErrHandler:  errHandler,
+		Name:              name,
+		ListenAddrs:       []string{fmt.Sprintf("/ip4/%s/tcp/0", ip)},
+		MaxPeers:          maxPeers,
+		MsgHandler:        msgHandler,
+		ErrHandler:        errHandler,
 		ValidationLatency: time.Millisecond * time.Duration(validationLatency),
 	})
 	if err != nil {

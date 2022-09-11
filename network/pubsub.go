@@ -30,9 +30,12 @@ func (n *Node) setupPubsub() error {
 }
 
 func (n *Node) Listen(pctx context.Context, t string) error {
-	sub, err := n.topics.Subscribe(t)
+	sub, exist, err := n.topics.Subscribe(t)
 	if err != nil {
 		return err
+	}
+	if exist {
+		return nil
 	}
 	nodeLogger.With("name", n.cfg.Name, "peer", n.host.ID().String()).Debug("listening on topic ", t)
 	ctx, cancel := context.WithCancel(pctx)

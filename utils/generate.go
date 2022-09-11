@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-
 //var (
 //	curveOrder = new(big.Int)
 //)
@@ -31,13 +30,13 @@ func Generate(ops, vals, maxGroups int) Groups {
 func GenerateOperatorIDs(n int) []types.OperatorID {
 	oids := make([]types.OperatorID, n)
 	for i := 0; i < n; i++ {
-		oids[i] = types.OperatorID(i+1)
+		oids[i] = types.OperatorID(i + 1)
 	}
 	return oids
 }
 
 type Share struct {
-	PK string
+	PK        string
 	Operators Group
 }
 
@@ -54,7 +53,7 @@ func (g Group) ID() string {
 
 func (g *Group) Append(oid types.OperatorID) bool {
 	if oid == types.OperatorID(0) {
-		 return false
+		return false
 	}
 	for i, o := range g {
 		if o == oid {
@@ -106,7 +105,7 @@ func GenerateShare(group Group) Share {
 	sk := &bls.SecretKey{}
 	sk.SetByCSPRNG()
 	return Share{
-		PK: sk.GetPublicKey().SerializeToHexStr(),
+		PK:        sk.GetPublicKey().SerializeToHexStr(),
 		Operators: group,
 	}
 }

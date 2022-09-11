@@ -75,7 +75,7 @@ func main() {
 
 type stats struct {
 	ValidatorsCount int
-	OperatorsCount int
-	GroupsCount int
-	AvgInGroup float64
+	OperatorsCount  int
+	GroupsCount     int
+	AvgInGroup      float64
 }

@@ -56,7 +56,7 @@ func TestNode(t *testing.T) {
 		}
 	}
 
-	t.Log("connected all nodes")
+	t.Log("all nodes are connected")
 
 	<-time.After(time.Second * 2)
 
@@ -65,6 +65,8 @@ func TestNode(t *testing.T) {
 			_ = n.Listen(ctx, "test")
 		}(node)
 	}
+
+	t.Log("listening on topic: test")
 
 	<-time.After(time.Second * 3)
 

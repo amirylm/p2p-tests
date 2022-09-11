@@ -18,11 +18,11 @@ type ScoreParamsFactory func(s string) *pubsub.TopicScoreParams
 type TopicManager interface {
 	Pubsub() *pubsub.PubSub
 
-	Join(t string, opts ...pubsub.TopicOpt) (*pubsub.Topic, error)
-	Subscribe(t string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error)
-	Leave(t string) (*pubsub.Topic, error)
-	Publish(ctx context.Context, t string, data []byte) error
 	ListPeers(t string) []peer.ID
+	Publish(ctx context.Context, t string, data []byte) error
+	Join(t string, opts ...pubsub.TopicOpt) (*pubsub.Topic, error)
+	Leave(t string) (*pubsub.Topic, error)
+	Subscribe(t string, opts ...pubsub.SubOpt) (*pubsub.Subscription, bool, error)
 }
 
 type topicManager struct {
@@ -44,12 +44,12 @@ func newTopicManager(ps *pubsub.PubSub, scoreParams ScoreParamsFactory, validati
 		}
 	}
 	return &topicManager{
-		ps:     ps,
-		mutex:  &sync.RWMutex{},
-		topics: make(map[string]*pubsub.Topic),
-		subs:   make(map[string]*pubsub.Subscription),
+		ps:                 ps,
+		mutex:              &sync.RWMutex{},
+		topics:             make(map[string]*pubsub.Topic),
+		subs:               make(map[string]*pubsub.Subscription),
 		scoreParamsFactory: scoreParams,
-		validationLatency: validationLatency,
+		validationLatency:  validationLatency,
 	}
 }
 
@@ -59,20 +59,21 @@ func (tm *topicManager) Pubsub() *pubsub.PubSub {
 
 func (tm *topicManager) ListPeers(t string) []peer.ID {
 	tm.mutex.RLock()
-	defer tm.mutex.RUnlock()
-
 	topic, ok := tm.topics[t]
+	tm.mutex.RUnlock()
+
 	if !ok {
 		return nil
 	}
+
 	return topic.ListPeers()
 }
 
 func (tm *topicManager) Publish(ctx context.Context, t string, data []byte) error {
 	tm.mutex.RLock()
-	defer tm.mutex.RUnlock()
-
 	topic, ok := tm.topics[t]
+	tm.mutex.RUnlock()
+
 	if !ok {
 		return errors.Errorf("topic (%s) not found", t)
 	}
@@ -111,13 +112,13 @@ func (tm *topicManager) Leave(t string) (*pubsub.Topic, error) {
 	return nil, nil
 }
 
-func (tm *topicManager) Subscribe(t string, opts ...pubsub.SubOpt) (*pubsub.Subscription, error) {
+func (tm *topicManager) Subscribe(t string, opts ...pubsub.SubOpt) (*pubsub.Subscription, bool, error) {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
 
 	sub, ok := tm.subs[t]
 	if ok {
-		return sub, nil
+		return sub, true, nil
 	}
 
 	topic, ok := tm.topics[t]
@@ -125,17 +126,17 @@ func (tm *topicManager) Subscribe(t string, opts ...pubsub.SubOpt) (*pubsub.Subs
 		var err error
 		topic, err = tm.join(t)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	}
 
 	sub, err := topic.Subscribe(opts...)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	tm.subs[t] = sub
 
-	return sub, nil
+	return sub, false, nil
 }
 
 func (tm *topicManager) join(t string, opts ...pubsub.TopicOpt) (*pubsub.Topic, error) {

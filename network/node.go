@@ -29,7 +29,7 @@ type NodeConfig struct {
 	ErrHandler ErrHandler
 	MaxPeers   int
 
-	ValidationLatency   time.Duration
+	ValidationLatency time.Duration
 }
 
 type Node struct {
