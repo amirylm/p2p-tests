@@ -10,8 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
-	"github.com/testground/sdk-go/sync"
+	tsync "github.com/testground/sdk-go/sync"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -91,32 +92,56 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 
 	rand.Seed(time.Now().UnixNano() + initCtx.GlobalSeq)
 
-	for i := 0; i < 17; i++ {
-		runenv.RecordMessage("⚡️  ITERATION ROUND %d", i)
-		latency := time.Duration(rand.Int31n(int32(latencyMax))) * time.Millisecond
-		runenv.RecordMessage("(round %d) my latency: %s", i, latency)
+	var sendErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		id := node.Host().ID().String()
+		for i := 0; i < 17; i++ {
+			runenv.RecordMessage("⚡️  ITERATION ROUND %d", i)
+			latency := time.Duration(rand.Int31n(int32(latencyMax))) * time.Millisecond
+			runenv.RecordMessage("(round %d) my latency: %s", i, latency)
 
-		msg := spectypes.SSVMessage{
-			MsgType: spectypes.SSVDecidedMsgType,
-			MsgID:   spectypes.NewMsgID([]byte("1111"), spectypes.BNRoleAttester),
-			Data:    []byte(fmt.Sprintf("some decided message from %s i=%d", name, i)),
+			msg := spectypes.SSVMessage{
+				MsgType: spectypes.SSVDecidedMsgType,
+				MsgID:   spectypes.NewMsgID([]byte("1111"), spectypes.BNRoleAttester),
+				Data:    []byte(fmt.Sprintf("some decided message from %s i=%d", name, i)),
+			}
+			data, err := msg.Encode()
+			if err != nil {
+				sendErr = err
+				continue
+			}
+			ts := time.Now()
+			err = node.TopicManager().Publish(ctx, "test", data)
+			point := fmt.Sprintf("publish-result,round=%d,peer=%s", i, id)
+			if err != nil {
+				runenv.RecordMessage("could not publish message from peer %s with error: %s", id, err.Error())
+				runenv.R().RecordPoint(point, -1.0)
+			} else {
+				runenv.RecordMessage("publish message from peer %s", id)
+				// record a result point; these points will be batch-inserted
+				// into InfluxDB when the test concludes.
+				runenv.R().RecordPoint(point, float64(time.Now().Sub(ts).Milliseconds())/1000.0)
+			}
+			<-time.After(1 * time.Second)
 		}
-		data, err := msg.Encode()
-		if err != nil {
-			return err
-		}
-		err = node.TopicManager().Publish(ctx, "test", data)
-		<-time.After(1 * time.Second)
+		<-time.After(time.Second * 5)
+	}()
+
+	wg.Wait()
+
+	if sendErr != nil {
+		return sendErr
 	}
-
-	<-time.After(time.Second * 10)
 
 	return nil
 }
 
 func getAllPeers(ctx context.Context, runenv *runtime.RunEnv, initCtx *run.InitContext, ai peer.AddrInfo) ([]peer.AddrInfo, error) {
 	// the peers topic where all instances will advertise their AddrInfo.
-	peersTopic := sync.NewTopic("peers", new(peer.AddrInfo))
+	peersTopic := tsync.NewTopic("peers", new(peer.AddrInfo))
 	// initialize a slice to store the AddrInfos of all other peers in the run.
 	peers := make([]peer.AddrInfo, 0, runenv.TestInstanceCount)
 	// Publish our own.
