@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/amir-blox/p2p-tests/network"
+	"github.com/amir-blox/p2p-tests/plans/topology/network"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"

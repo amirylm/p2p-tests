@@ -7,11 +7,12 @@ runner = "local:exec"
 [builders."docker:go"]
 enabled = true
 go_version = "1.17"
-module_path = "github.com/your/module/name"
+# module_path = "github.com/your/module/name"
 exec_pkg = "."
 
-# [builders."exec:go"]
-# enabled = true
+[builders."exec:go"]
+enabled = true
+go_version = "1.17"
 # module_path = "github.com/your/module/name"
 
 [runners."local:docker"]
