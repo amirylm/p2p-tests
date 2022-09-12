@@ -13,6 +13,14 @@ import (
 
 // setupPubsub initialize the underlying pubsub router
 func (n *Node) setupPubsub() error {
+	var tracer *TestTracer
+	var err error
+	if len(n.cfg.TraceOut) > 0 {
+		tracer, err = NewTestTracer(n.cfg.TraceOut, n.host.ID(), false)
+		if err != nil {
+			return err
+		}
+	}
 	psOpts := []pubsub.Option{
 		pubsub.WithSeenMessagesTTL(32 * 12 * time.Second),
 		pubsub.WithPeerOutboundQueueSize(512),
@@ -26,6 +34,8 @@ func (n *Node) setupPubsub() error {
 		return errors.Wrap(err, "could not create pubsub router")
 	}
 	n.topics = newTopicManager(ps, nil, n.cfg.ValidationLatency)
+	n.tracer = tracer
+
 	return nil
 }
 

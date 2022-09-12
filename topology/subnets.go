@@ -74,7 +74,7 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		if ai.ID == hostId {
 			continue
 		}
-		runenv.RecordMessage("dial peer: %s", ai.ID)
+		runenv.RecordMessage("dialing peer: %s", ai.ID)
 		if err := node.Host().Connect(ctx, ai); err != nil {
 			return err
 		}

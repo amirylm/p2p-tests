@@ -30,6 +30,7 @@ type NodeConfig struct {
 	MaxPeers   int
 
 	ValidationLatency time.Duration
+	TraceOut          string
 }
 
 type Node struct {
@@ -40,6 +41,7 @@ type Node struct {
 	// components
 	host   host.Host
 	topics TopicManager
+	tracer *TestTracer
 	// handlers
 	msgHandler MsgHandler
 	errHandler ErrHandler
@@ -103,6 +105,12 @@ func (n *Node) TopicManager() TopicManager {
 
 func (n *Node) Close() error {
 	n.cancel()
+	if n.tracer != nil {
+		err := n.tracer.Stop()
+		if err != nil {
+			nodeLogger.Warnf("could not stop tracer: %s", err.Error())
+		}
+	}
 	return n.host.Close()
 }
 
