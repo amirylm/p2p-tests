@@ -23,3 +23,21 @@ Within the VM, check that testground is configured and start the daemon:
 testground version
 testground daemon
 ```
+
+Import plans and start daemon:
+
+```shell
+testground plan import --from /vagrant/p2p/plans
+testground daemon
+```
+
+Run plans (from another shell)
+
+```shell
+testground run single --plan=plans/topology \
+                        --testcase=subnets \
+                        --builder=exec:go \
+                        --runner=local:exec \
+                        --instances=50 \
+                        --test-param=
+```

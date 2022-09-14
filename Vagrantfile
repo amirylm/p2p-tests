@@ -30,13 +30,14 @@ Vagrant.configure("2") do |config|
     sudo apt-get install -y docker-ce
     sudo usermod -aG docker vagrant
     # install go
-    sudo snap install --classic --channel=1.17/stable go 2> /dev/null
+    sudo snap install --classic --channel=1.18/stable go 2> /dev/null
     # install testground, TODO: extract to script
     cd /testground 2> /dev/null || (sudo mkdir /testground && cd /testground && \
                                     sudo docker pull iptestground/testground:edge && \
                                     sudo docker pull iptestground/sync-service:edge && \
                                     sudo docker pull iptestground/sidecar:edge && \
                                     sudo docker run -v /testground:/mount --rm --entrypoint cp iptestground/testground:edge /testground /mount/testground && \
+                                    sudo chown vagrant: /testground && \
                                     sudo echo "export TESTGROUND_HOME=/testground" >> /home/vagrant/.bashrc && \
                                     sudo echo "alias testground=/testground/testground" >> /home/vagrant/.bashrc)
   SHELL
