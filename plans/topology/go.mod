@@ -1,6 +1,6 @@
 module github.com/amir-blox/p2p-tests/plans
 
-go 1.17
+go 1.18
 
 require (
 	github.com/bloxapp/ssv-spec v0.2.2

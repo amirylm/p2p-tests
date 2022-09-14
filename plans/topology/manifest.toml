@@ -6,23 +6,24 @@ runner = "local:exec"
 
 [builders."docker:go"]
 enabled = true
-go_version = "1.17"
+build_base_image = "golang:1.18-buster"
 # module_path = "github.com/your/module/name"
-exec_pkg = "."
+# exec_pkg = "."
 
 [builders."exec:go"]
 enabled = true
-go_version = "1.17"
+exec_pkg = "."
+# go_version = "1.18"
 # module_path = "github.com/your/module/name"
+
+[runners."local:exec"]
+enabled = true
 
 [runners."local:docker"]
 enabled = true
 
-# [runners."local:exec"]
-# enabled = true
-#
-# [runners."cluster:k8s"]
-# enabled = true
+[runners."cluster:k8s"]
+enabled = true
 
 [[testcases]]
 name= "subnets"
@@ -32,6 +33,6 @@ instances = { min = 50, max = 70, default = 50 }
     subnets = { type = "int", desc = "number of subents to use", default = 128 }
     groups = { type = "int", desc = "number of groups (validators with the same committee)", default = 0 }
     max_peers = { type = "int", desc = "maximum number of connected peers", default = 25 }
-    t_latency = { type = "int", desc = "network latency between nodes", unit = "ms", default="5" }
-    t_latency_max = { type = "int", desc = "if supplied, latency is between t_latency and t_latency_max", unit = "ms", default="50" }
-    validation_latency = { type = "int", desc = "maximum value for validation latency", unit = "ms", default = "5" }
+    t_latency = { type = "int", desc = "network latency between nodes", unit = "ms", default=5 }
+    t_latency_max = { type = "int", desc = "if supplied, latency is between t_latency and t_latency_max", unit = "ms", default=50 }
+    validation_latency = { type = "int", desc = "maximum value for validation latency", unit = "ms", default = 5 }
