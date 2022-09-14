@@ -1,23 +1,56 @@
 # p2p-tests
 Testground plans for p2p testing
 
+## Links
+
+* [getting started](https://docs.testground.ai/getting-started)
+* [architecture docs](https://docs.testground.ai/concepts-and-architecture)
+* [libp2p test plans](https://github.com/libp2p/test-plans)
+
 ## Installation
 
-**Pre-requisites**
+**VM**
 
-* [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
-* [Vagrant](https://www.vagrantup.com/downloads)
-  * disksize plugin: \
-    `$ vagrant plugin install vagrant-disksize`
+Install [VirtualBox](https://www.virtualbox.org/wiki/Downloads) and
+[Vagrant](https://www.vagrantup.com/downloads).
 
-**Machine Setup**
+Install disksize plugin for vagrant: `vagrant plugin install vagrant-disksize`
+
+Start with `vagrant up`
+
+Login with `vagrant ssh` and check that testground is configured with `testground version`
+
+**Desktop (docker)**
+
+Pull images:
 
 ```shell
-vagrant up
-vagrant ssh
+docker pull iptestground/testground:edge
+docker pull iptestground/sync-service:edge
+docker pull iptestground/sidecar:edge
 ```
 
-Within the VM, check that testground is configured:
+Run (you can change `$HOME/testground` according to the desired directory):
+
+```shell
+docker run -v "$HOME/testground":/mount --rm --entrypoint cp iptestground/testground:edge /testground /mount/testground
+```
+
+Add `$TESTGROUND_HOME` env:
+
+```shell
+echo "export TESTGROUND_HOME=~/testground" >> .zshrc
+source .zshrc
+```
+
+Add `testground` alias:
+
+```shell
+echo "alias testground=/testground/testground" >> .zshrc
+source .zshrc
+```
+
+Check that testground is configured:
 
 ```shell
 testground version
@@ -38,6 +71,7 @@ testground daemon
 **Import Plans**
 
 ```shell
+# path (/vagrant/p2p/plans) should be changed in desktop
 testground plan import --from /vagrant/p2p/plans
 ```
 
