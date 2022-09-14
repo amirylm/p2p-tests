@@ -30,12 +30,6 @@ docker pull iptestground/sync-service:edge
 docker pull iptestground/sidecar:edge
 ```
 
-Run (you can change `$HOME/testground` according to the desired directory):
-
-```shell
-docker run -v "$HOME/testground":/mount --rm --entrypoint cp iptestground/testground:edge /testground /mount/testground
-```
-
 Add `$TESTGROUND_HOME` env:
 
 ```shell
@@ -43,10 +37,16 @@ echo "export TESTGROUND_HOME=~/testground" >> .zshrc
 source .zshrc
 ```
 
+Run the daemon image
+
+```shell
+docker run -v "$TESTGROUND_HOME":/mount --rm --entrypoint cp iptestground/testground:edge /testground /mount/testground
+```
+
 Add `testground` alias:
 
 ```shell
-echo "alias testground=/testground/testground" >> .zshrc
+echo "alias testground=$TESTGROUND_HOME/testground" >> .zshrc
 source .zshrc
 ```
 
