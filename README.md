@@ -17,21 +17,31 @@ vagrant up
 vagrant ssh
 ```
 
-Within the VM, check that testground is configured and start the daemon:
+Within the VM, check that testground is configured:
 
 ```shell
 testground version
+```
+
+### Daemon
+
+Start daemon with th following cmd:
+
+**NOTE** that it blocks the terminal, open a new terminal with `vagrant ssh`
+
+```shell
 testground daemon
 ```
 
-Import plans and start daemon:
+### Plans
+
+**Import Plans**
 
 ```shell
 testground plan import --from /vagrant/p2p/plans
-testground daemon
 ```
 
-Run plans (from another shell)
+**Run Plans**
 
 ```shell
 testground run single --plan=plans/topology \
@@ -39,5 +49,4 @@ testground run single --plan=plans/topology \
                         --builder=exec:go \
                         --runner=local:exec \
                         --instances=50 \
-                        --test-param=
 ```
