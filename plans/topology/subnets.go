@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/amir-blox/p2p-tests/plans/topology/network"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -18,18 +17,36 @@ import (
 
 func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	var (
-		valdatorsCount    = runenv.IntParam("validators")
-		subnetsCount      = runenv.IntParam("subnets")
-		maxPeers          = runenv.IntParam("max_peers")
-		latency           = runenv.IntParam("t_latency")
-		latencyMax        = runenv.IntParam("t_latency_max")
-		validationLatency = runenv.IntParam("validation_latency")
+		valdatorsCount = 250
+		subnetsCount = 128
+		maxPeers = 25
+		latency           = 5
+		latencyMax        = 50
+		validationLatency = 5
 	)
+	if runenv.IsParamSet("validators") {
+		valdatorsCount = runenv.IntParam("validators")
+	}
+	if runenv.IsParamSet("subnets") {
+		subnetsCount      = runenv.IntParam("subnets")
+	}
+	if runenv.IsParamSet("max_peers") {
+		maxPeers          = runenv.IntParam("max_peers")
+	}
+	if runenv.IsParamSet("t_latency") {
+		latency          = runenv.IntParam("max_peers")
+	}
+	if runenv.IsParamSet("t_latency_max") {
+		latencyMax          = runenv.IntParam("t_latency_max")
+	}
+	if runenv.IsParamSet("validation_latency") {
+		validationLatency          = runenv.IntParam("validation_latency")
+	}
 
-	runenv.RecordMessage("started test instance; params: validators=%d, subnets=%d, t_latency=%d, t_latency_max=%d, validation_latency=%d",
-		valdatorsCount, subnetsCount, latency, latencyMax, validationLatency)
+	runenv.RecordMessage("started test instance; params: validators=%d, subnets=%d, max_peers=%d, t_latency=%d, t_latency_max=%d, validation_latency=%d",
+		valdatorsCount, subnetsCount, maxPeers, latency, latencyMax, validationLatency)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 32*12*time.Second)
 	defer cancel()
 
 	// wait until all instances in this test run have signalled
@@ -44,7 +61,7 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		runenv.R().Counter(fmt.Sprintf("in_msg_err_%s", s)).Inc(1)
 	}
 	name := fmt.Sprintf("testnode-%d", initCtx.GlobalSeq)
-	node, err := network.NewNode(ctx, &network.NodeConfig{
+	node, err := NewNode(ctx, &NodeConfig{
 		Name:              name,
 		ListenAddrs:       []string{fmt.Sprintf("/ip4/%s/tcp/0", ip)},
 		MaxPeers:          maxPeers,
@@ -56,8 +73,8 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		return fmt.Errorf("failed to instantiate node: %w", err)
 	}
 	defer func() {
-		err := node.Close()
-		runenv.RecordFailure(errors.Wrap(err, "could not close node"))
+		_ = node.Close()
+		//runenv.RecordFailure(errors.Wrap(err, "could not close node"))
 	}()
 
 	runenv.RecordMessage("node is ready, listening on: %v", node.Host().Addrs())
@@ -98,7 +115,7 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	go func() {
 		defer wg.Done()
 		id := node.Host().ID().String()
-		for i := 0; i < 17; i++ {
+		for i := 0; i < 13; i++ {
 			runenv.RecordMessage("⚡️  ITERATION ROUND %d", i)
 			latency := time.Duration(rand.Int31n(int32(latencyMax))) * time.Millisecond
 			runenv.RecordMessage("(round %d) my latency: %s", i, latency)
