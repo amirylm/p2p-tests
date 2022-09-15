@@ -7,6 +7,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
+	"github.com/testground/sdk-go/network"
 	"github.com/testground/sdk-go/run"
 	"github.com/testground/sdk-go/runtime"
 	tsync "github.com/testground/sdk-go/sync"
@@ -54,11 +55,11 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 
 	ip := initCtx.NetClient.MustGetDataNetworkIP()
 
-	msgHandler := func(s string, message spectypes.SSVMessage) {
-		runenv.R().Counter(fmt.Sprintf("in_msg_%s", s)).Inc(1)
+	msgHandler := func(t string, message spectypes.SSVMessage) {
+		runenv.R().Counter(fmt.Sprintf("in_msg_%s", t)).Inc(1)
 	}
-	errHandler := func(s string, err error) {
-		runenv.R().Counter(fmt.Sprintf("in_msg_err_%s", s)).Inc(1)
+	errHandler := func(t string, err error) {
+		runenv.R().Counter(fmt.Sprintf("in_msg_err_%s", t)).Inc(1)
 	}
 	name := fmt.Sprintf("testnode-%d", initCtx.GlobalSeq)
 	node, err := NewNode(ctx, &NodeConfig{
@@ -97,7 +98,8 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		}
 	}
 
-	<-time.After(time.Second * 2)
+	// wait for all peers to signal that they're connected
+	initCtx.SyncClient.MustSignalAndWait(ctx, "connected", runenv.TestInstanceCount)
 
 	go func() {
 		if err := node.Listen(ctx, "test"); err != nil {
@@ -105,7 +107,8 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		}
 	}()
 
-	<-time.After(time.Second * 10)
+	// wait for all peers to signal that they're subscribed
+	initCtx.SyncClient.MustSignalAndWait(ctx, "subscribed", runenv.TestInstanceCount)
 
 	rand.Seed(time.Now().UnixNano() + initCtx.GlobalSeq)
 
@@ -120,6 +123,14 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 			latency := time.Duration(rand.Int31n(int32(latencyMax))) * time.Millisecond
 			runenv.RecordMessage("(round %d) my latency: %s", i, latency)
 
+			initCtx.NetClient.MustConfigureNetwork(ctx, &network.Config{
+				Network:        "default",
+				Enable:         true,
+				Default:        network.LinkShape{Latency: latency},
+				CallbackState:  tsync.State(fmt.Sprintf("network-configured-%d", i)),
+				CallbackTarget: runenv.TestInstanceCount,
+			})
+
 			msg := spectypes.SSVMessage{
 				MsgType: spectypes.SSVDecidedMsgType,
 				MsgID:   spectypes.NewMsgID([]byte("1111"), spectypes.BNRoleAttester),
@@ -132,17 +143,16 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 			}
 			ts := time.Now()
 			err = node.TopicManager().Publish(ctx, "test", data)
-			point := fmt.Sprintf("publish-result,round=%d,peer=%s", i, id)
+			point := fmt.Sprintf("publish-result,peer=%s,round=%d", id, i)
 			if err != nil {
 				runenv.RecordMessage("could not publish message from peer %s with error: %s", id, err.Error())
 				runenv.R().RecordPoint(point, -1.0)
 			} else {
 				runenv.RecordMessage("publish message from peer %s", id)
-				// record a result point; these points will be batch-inserted
-				// into InfluxDB when the test concludes.
 				runenv.R().RecordPoint(point, float64(time.Now().Sub(ts).Milliseconds())/1000.0)
 			}
-			<-time.After(1 * time.Second)
+			doneState := tsync.State(fmt.Sprintf("done-%d", i))
+			initCtx.SyncClient.MustSignalAndWait(ctx, doneState, runenv.TestInstanceCount)
 		}
 		<-time.After(time.Second * 5)
 	}()
