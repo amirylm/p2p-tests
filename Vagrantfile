@@ -15,6 +15,8 @@ Vagrant.configure("2") do |config|
     vb.cpus = 4
   end
 
+  config.vm.network "private_network", type: "dhcp"
+
   config.vm.provision "shell", privileged: false, inline: <<-SHELL
     export DEBIAN_FRONTEND=noninteractive
     sudo apt-get update
@@ -24,7 +26,7 @@ Vagrant.configure("2") do |config|
 #     sudo apt-get install -qq -y make g++ python gcc-aarch64-linux-gnu \
 #         apt-transport-https lsb-release ca-certificates gnupg git zip unzip bash curl 2> /dev/null
     sudo apt-get install -y git apt-transport-https ca-certificates curl software-properties-common make python g++ gcc-aarch64-linux-gnu bash
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add - 2> /dev/null
     sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
     apt-cache policy docker-ce
     sudo apt-get install -y docker-ce
@@ -32,7 +34,7 @@ Vagrant.configure("2") do |config|
     # install go
     sudo snap install --classic --channel=1.18/stable go 2> /dev/null
     # install testground, TODO: extract to script
-    cd /testground 2> /dev/null || (sudo mkdir /testground && cd /testground && \
+    cd /testground 2> /dev/null || (sudo mkdir /testground && \
                                     sudo docker pull iptestground/testground:edge && \
                                     sudo docker pull iptestground/sync-service:edge && \
                                     sudo docker pull iptestground/sidecar:edge && \

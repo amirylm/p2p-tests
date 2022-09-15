@@ -99,5 +99,5 @@ The run ID can be used to collect results once finished:
 
 ```shell
 testground collect --runner=local:docker --output=/vagrant/p2p/data/<run-id>.tgz <run-id>
-tar zxvf <run-id>.tgz
+cd /vagrant/p2p/data && tar zxvf <run-id>.tgz
 ```
