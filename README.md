@@ -101,3 +101,37 @@ The run ID can be used to collect results once finished:
 testground collect --runner=local:docker --output=/vagrant/p2p/data/<run-id>.tgz <run-id>
 cd /vagrant/p2p/data && tar zxvf <run-id>.tgz
 ```
+
+## InfluxDB
+
+Get into the container: `docker exec -it testground-influxdb /bin/bash`
+
+Enter `influx` and create a user + verify it was created:
+```
+> CREATE USER admin WITH PASSWORD 'admin123' WITH ALL PRIVILEGES
+> SHOW USERS
+user  admin
+----  -----
+admin true
+```
+
+Enable HTTP:
+
+```shell
+apt update -y
+apt-get install vim -y
+vim /etc/influxdb/influxdb.conf
+```
+
+Paste the following inside `influxdb.conf`:
+
+```
+[http]
+  enabled = true
+  bind-address = ":8086"
+  auth-enabled = true
+```
+
+Last thing, exit and restart the container:
+
+`docker container restart testground-influxdb`
