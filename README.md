@@ -3,26 +3,28 @@ Testground plans for p2p testing
 
 ## Links
 
-* [getting started](https://docs.testground.ai/getting-started)
-* [architecture docs](https://docs.testground.ai/concepts-and-architecture)
+* [testground: getting started](https://docs.testground.ai/getting-started)
+* [testground: architecture docs](https://docs.testground.ai/concepts-and-architecture)
 * [libp2p test plans](https://github.com/libp2p/test-plans)
 
 ## Installation
 
-**VM**
+### VM
 
-Install [VirtualBox](https://www.virtualbox.org/wiki/Downloads) and
+**1.** Install [VirtualBox](https://www.virtualbox.org/wiki/Downloads) and
 [Vagrant](https://www.vagrantup.com/downloads).
 
-Install disksize plugin for vagrant: `vagrant plugin install vagrant-disksize`
+**2.** Install disksize plugin for vagrant: `vagrant plugin install vagrant-disksize`
 
-Start with `vagrant up`
+**3.** Start with `vagrant up`
 
-Login with `vagrant ssh` and check that testground is configured with `testground version`
+**4.** Login with `vagrant ssh` and check that testground is configured with `testground version`
 
-**Desktop (docker)**
+Everything is ready, jump to [start daemon](#daemon).
 
-Pull images:
+### Mac (docker)
+
+**1.** Pull related images:
 
 ```shell
 docker pull iptestground/testground:edge
@@ -30,43 +32,43 @@ docker pull iptestground/sync-service:edge
 docker pull iptestground/sidecar:edge
 ```
 
-Add `$TESTGROUND_HOME` env:
+**2.** Add `$TESTGROUND_HOME` env:
 
 ```shell
 echo "export TESTGROUND_HOME=~/testground" >> .zshrc
 source .zshrc
 ```
 
-Run the daemon image
+**3.** Run testground container
 
 ```shell
 docker run -v "$TESTGROUND_HOME":/mount --rm --entrypoint cp iptestground/testground:edge /testground /mount/testground
 ```
 
-Add `testground` alias:
+**4.** Add `testground` alias:
 
 ```shell
 echo "alias testground=$TESTGROUND_HOME/testground" >> .zshrc
 source .zshrc
 ```
 
-Check that testground is configured:
+**5.** Check that testground is configured:
 
 ```shell
 testground version
 ```
 
-### Daemon
+## Daemon
 
 Start daemon with th following cmd:
 
-**NOTE** that it blocks the terminal, open a new terminal with `vagrant ssh`
+**NOTE** blocks the terminal, using vagrant you need to open a new terminal with `vagrant ssh`
 
 ```shell
 testground daemon
 ```
 
-### Plans
+## Plans
 
 **Import Plans**
 
@@ -82,5 +84,20 @@ testground run single --plan=plans/topology \
                         --testcase=subnets \
                         --builder=exec:go \
                         --runner=local:exec \
-                        --instances=50 \
+                        --instances=50
+
+# ----------------
+                        
+>>> Result:
+
+Sep 13 09:04:03.650334  INFO    run is queued with ID: ccg4f0p4hr6rqnt7v670
+```
+
+**Collect Results**
+
+The run ID can be used to collect results once finished:
+
+```shell
+testground collect --runner=local:docker --output=/vagrant/p2p/data/<run-id>.tgz <run-id>
+tar zxvf <run-id>.tgz
 ```
