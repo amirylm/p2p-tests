@@ -135,3 +135,14 @@ Paste the following inside `influxdb.conf`:
 Last thing, exit and restart the container:
 
 `docker container restart testground-influxdb`
+
+
+## Grafana 
+
+**Setup**
+
+1. Get the IP of the machine (`ip a`) and use it to open grafana in browser (http://<ip>:3000) 
+
+2. Configure influxdb as data source (`http://testground-influxdb:8086`) using http with the credentials from previous step
+
+3. Import dashboard ([./resources/grafana_dashboard.yaml](/resources/grafana_dashboard.yaml))
