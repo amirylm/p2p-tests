@@ -3,6 +3,7 @@ package main
 import "github.com/testground/sdk-go/run"
 
 var testcases = map[string]interface{}{
+	"groups": runGroups,
 	"subnets": runSubnets,
 }
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/amir-blox/p2p-tests/utils"
@@ -41,17 +42,26 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		f, err := os.OpenFile(path.Join(outDir, ".clusters.yaml"), os.O_RDWR|os.O_CREATE, 0755)
+		raw, err := json.Marshal(groups)
 		if err != nil {
 			panic(err)
 		}
-		defer f.Close()
-		enc := yaml.NewEncoder(f)
-		defer enc.Close()
-		enc.SetIndent(2)
-		if err := enc.Encode(groups); err != nil {
+		err = os.WriteFile(path.Join(outDir, ".clusters.json"), raw, 0755)
+		//err = os.WriteFile(path.Join(outDir, ".clusters.yaml"), []byte(strings.ReplaceAll(string(raw), "\"", "")), 0755)
+		if err != nil {
 			panic(err)
 		}
+		//f, err := os.OpenFile(path.Join(outDir, ".clusters.yaml"), os.O_RDWR|os.O_CREATE, 0755)
+		//if err != nil {
+		//	panic(err)
+		//}
+		//defer f.Close()
+		//enc := yaml.NewEncoder(f)
+		//defer enc.Close()
+		//enc.SetIndent(2)
+		//if err := enc.Encode(groups); err != nil {
+		//	panic(err)
+		//}
 	}()
 
 	wg.Add(1)

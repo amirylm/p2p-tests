@@ -81,10 +81,10 @@ testground plan import --from /vagrant/p2p/plans
 
 ```shell
 testground run single --plan=plans/topology \
-                        --testcase=subnets \
+                        --testcase=groups \
                         --builder=exec:go \
                         --runner=local:exec \
-                        --instances=50
+                        --instances=100
 
 # ----------------
                         
@@ -98,8 +98,9 @@ Sep 13 09:04:03.650334  INFO    run is queued with ID: ccg4f0p4hr6rqnt7v670
 The run ID can be used to collect results once finished:
 
 ```shell
-testground collect --runner=local:docker --output=/vagrant/p2p/data/<run-id>.tgz <run-id>
-cd /vagrant/p2p/data && tar zxvf <run-id>.tgz
+cd /vagrant/p2p/data
+testground collect --runner=local:docker <run-id>
+tar zxvf <run-id>.tgz
 ```
 
 ## InfluxDB
@@ -141,8 +142,8 @@ Last thing, exit and restart the container:
 
 **Setup**
 
-1. Get the IP of the machine (`ip a`) and use it to open grafana in browser (http://<ip>:3000) 
+1. Get the IP of the machine (`ip a`) and use it to open grafana in browser (http://machine-ip:3000) 
 
 2. Configure influxdb as data source (`http://testground-influxdb:8086`) using http with the credentials from previous step
 
-3. Import dashboard ([./resources/grafana_dashboard.yaml](/resources/grafana_dashboard.yaml))
+3. Import dashboard ([./resources/grafana_dashboard.json](/resources/grafana_dashboard.json))

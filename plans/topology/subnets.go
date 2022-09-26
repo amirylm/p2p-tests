@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	spectypes "github.com/bloxapp/ssv-spec/types"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -18,15 +19,15 @@ import (
 
 func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	var (
-		valdatorsCount = 250
+		clustersCfg = ".clusters.yaml"
 		subnetsCount = 128
 		maxPeers = 25
 		latency           = 5
 		latencyMax        = 50
 		validationLatency = 5
 	)
-	if runenv.IsParamSet("validators") {
-		valdatorsCount = runenv.IntParam("validators")
+	if runenv.IsParamSet("clusters") {
+		clustersCfg = runenv.StringParam("clusters")
 	}
 	if runenv.IsParamSet("subnets") {
 		subnetsCount      = runenv.IntParam("subnets")
@@ -44,8 +45,30 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		validationLatency          = runenv.IntParam("validation_latency")
 	}
 
-	runenv.RecordMessage("started test instance; params: validators=%d, subnets=%d, max_peers=%d, t_latency=%d, t_latency_max=%d, validation_latency=%d",
-		valdatorsCount, subnetsCount, maxPeers, latency, latencyMax, validationLatency)
+	cls, err := readClusters(clustersCfg)
+	if err != nil {
+		return errors.Wrap(err, "could not read clusters")
+	}
+
+	myOid := spectypes.OperatorID(initCtx.GlobalSeq)
+	var myValidators []string
+	valdatorsCount := 0
+	for _, shares := range cls {
+		sharesLoop:
+		for _, s := range shares {
+			valdatorsCount++
+			for _, oid := range s.Operators {
+				if myOid == oid {
+					myValidators = append(myValidators, s.PK)
+					runenv.R().Counter("my_validators_count").Inc(1)
+					continue sharesLoop
+				}
+			}
+		}
+	}
+
+	runenv.RecordMessage("started test instance; params: i=%d, myValidators=%d, validators=%d, groups=%d, max_peers=%d, t_latency=%d, t_latency_max=%d, validation_latency=%d",
+		initCtx.GlobalSeq, len(myValidators), valdatorsCount, len(cls), maxPeers, latency, latencyMax, validationLatency)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 32*12*time.Second)
 	defer cancel()
@@ -94,21 +117,36 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 		}
 		runenv.RecordMessage("dialing peer: %s", ai.ID)
 		if err := node.Host().Connect(ctx, ai); err != nil {
-			return err
+			runenv.RecordFailure(errors.Wrapf(err, "could not connect to node %s", ai.ID.String()))
 		}
 	}
 
 	// wait for all peers to signal that they're connected
 	initCtx.SyncClient.MustSignalAndWait(ctx, "connected", runenv.TestInstanceCount)
 
-	go func() {
-		if err := node.Listen(ctx, "test"); err != nil {
-			runenv.RecordFailure(errors.Wrap(err, "could not listen to test topic"))
-		}
-	}()
+	subnets := [128]int{}
+	for _, valPk := range myValidators {
+		sub := ValidatorSubnet(valPk, uint64(subnetsCount))
+		subnets[sub]++
+		go func() {
+			if err := node.Listen(ctx, fmt.Sprintf("test.%d", sub)); err != nil {
+				runenv.RecordFailure(errors.Wrap(err, "could not listen to test topic"))
+			}
+		}()
+	}
+	for i, s := range subnets {
+		runenv.R().Counter(fmt.Sprintf("subnet_%d_validators", i)).Inc(int64(s))
+	}
+	//go func() {
+	//	if err := node.Listen(ctx, "test.decided"); err != nil {
+	//		runenv.RecordFailure(errors.Wrap(err, "could not listen to test topic"))
+	//	}
+	//}()
 
 	// wait for all peers to signal that they're subscribed
 	initCtx.SyncClient.MustSignalAndWait(ctx, "subscribed", runenv.TestInstanceCount)
+
+	//<-time.After(time.Second * 2)
 
 	rand.Seed(time.Now().UnixNano() + initCtx.GlobalSeq)
 
@@ -118,7 +156,7 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	go func() {
 		defer wg.Done()
 		id := node.Host().ID().String()
-		for i := 0; i < 13; i++ {
+		for i := 0; i < 9; i++ {
 			runenv.RecordMessage("⚡️  ITERATION ROUND %d", i)
 			latency := time.Duration(rand.Int31n(int32(latencyMax))) * time.Millisecond
 			runenv.RecordMessage("(round %d) my latency: %s", i, latency)
@@ -131,30 +169,37 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 				CallbackTarget: runenv.TestInstanceCount,
 			})
 
-			msg := spectypes.SSVMessage{
-				MsgType: spectypes.SSVDecidedMsgType,
-				MsgID:   spectypes.NewMsgID([]byte("1111"), spectypes.BNRoleAttester),
-				Data:    []byte(fmt.Sprintf("some decided message from %s i=%d", name, i)),
-			}
-			data, err := msg.Encode()
-			if err != nil {
-				sendErr = err
-				continue
-			}
-			ts := time.Now()
-			err = node.TopicManager().Publish(ctx, "test", data)
-			point := fmt.Sprintf("publish-result,peer=%s,round=%d", id, i)
-			if err != nil {
-				runenv.RecordMessage("could not publish message from peer %s with error: %s", id, err.Error())
-				runenv.R().RecordPoint(point, -1.0)
-			} else {
-				runenv.RecordMessage("publish message from peer %s", id)
-				runenv.R().RecordPoint(point, float64(time.Now().Sub(ts).Milliseconds())/1000.0)
+			for _, valPkHex := range myValidators {
+				valPk, err := hex.DecodeString(valPkHex)
+				if err != nil {
+					runenv.RecordFailure(errors.Wrap(err, "could not listen to test topic"))
+					continue
+				}
+				msg := spectypes.SSVMessage{
+					MsgType: spectypes.SSVDecidedMsgType,
+					MsgID:   spectypes.NewMsgID(valPk, spectypes.BNRoleAttester),
+					Data:    []byte(fmt.Sprintf("some decided message from %s i=%d,pk=%s", name, i, valPkHex)),
+				}
+				data, err := msg.Encode()
+				if err != nil {
+					sendErr = err
+					continue
+				}
+				ts := time.Now()
+				sub := ValidatorSubnet(valPkHex, uint64(subnetsCount))
+				err = node.TopicManager().Publish(ctx, fmt.Sprintf("test.%d", sub), data)
+				point := fmt.Sprintf("publish-result,subnet=%d,pk=%s,round=%d", sub, valPkHex, i)
+				if err != nil {
+					runenv.RecordMessage("could not publish message from peer %s with error: %s", id, err.Error())
+					runenv.R().RecordPoint(point, -1.0)
+				} else {
+					runenv.RecordMessage("publish message on topic %s from peer %s", fmt.Sprintf("test.%d", sub), id)
+					runenv.R().RecordPoint(point, float64(time.Now().Sub(ts).Milliseconds())/1000.0)
+				}
 			}
 			doneState := tsync.State(fmt.Sprintf("done-%d", i))
 			initCtx.SyncClient.MustSignalAndWait(ctx, doneState, runenv.TestInstanceCount)
 		}
-		<-time.After(time.Second * 5)
 	}()
 
 	wg.Wait()
@@ -162,6 +207,9 @@ func runSubnets(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	if sendErr != nil {
 		return sendErr
 	}
+
+	<-time.After(time.Second * 2)
+
 
 	return nil
 }
